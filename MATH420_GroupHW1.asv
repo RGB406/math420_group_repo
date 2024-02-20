@@ -6,13 +6,14 @@ T = readtable("project5_data.xlsx");
 V = table2array(T(2, 13:1103));
 V_t = V(52:1091);
 
-%% Question 1
+%% Question 1, part a
 N_max = 909327;
 N_min = 1 + V_t(1040);
+a = (6/(1040 * (1040 + 1) * (2*1040 + 1)));
 disp("t0 is 52")
 
 % Below is Algorithm 1
-B_hat_max = (6/(1040 * (1040 + 1) * (2*1040 + 1)));
+B_hat_max = a;
 B_hat_min = B_hat_max;
 
 % Sum of I(t)
@@ -38,26 +39,112 @@ J_min = 0;
 
 for t = 1:1040
     % Calculating the objective function summation.
-    J_max = J_max + (B_hat_max * t - log(V_t(t) / (N_max - V_t(t))) - b_max);
-    J_min = J_min + (B_hat_min * t - log(V_t(t) / (N_min - V_t(t))) - b_min);
+    J_max = J_max + (B_hat_max * t - log(V_t(t) / (N_max - V_t(t))) - b_max)^2;
+    J_min = J_min + (B_hat_min * t - log(V_t(t) / (N_min - V_t(t))) - b_min)^2;
 end
 
 % Display the calculated values.
 J_max
 J_min
 
+% Precalculate NI values for N_max and N_min
 NI_max = N_max * V_t(1);
 NI_min = N_min * V_t(1);
+
 hold on
-
-NI_max .* ((V_t(1) + (N_max - V_t(1)).*exp(-1 * B_hat_max * (0:1039))))
-
+% First, plot I(t)
 plot(0:1039, V_t(1:1040), 'r-')
-plot(0:1039, NI_max/(V_t(1) + (N_max - V_t(1))*1), 'g-')
-plot(0:1039, N_min/(V_t(1) + (N_min - V_t(1)).*exp(B_hat_min * (0:1039))), 'b-')
+% Then, plot the estimated value using the N_max pop
+plot(0:1039, NI_max * (1./(V_t(1) + (N_max - V_t(1)).*exp(-1 * B_hat_max * (0:1039)))), 'g-')
+% Finally, plot with the N_min estimation
+plot(0:1039, NI_min * (1./(V_t(1) + (N_min - V_t(1)).*exp(-1 * B_hat_min * (0:1039)))), 'b-')
+axis tight
 legend('Real', 'Estimated N_{max}', 'Estimated N_{min}')
 title('Graph of I(t)')
 hold off
 
+%% Part b
+N = N_min;
+J_old = inf;
+J_N = 0;
+init = V_t(1);
+a = (6/(1040 * (1040 + 1) * (2*1040 + 1)));
+% Assigning T to be a vector.
+t = 1:1040;
+J_N_vals = 0;
+
+while true
+    % This is algorithm 2, step 2.1.
+    first = sum( abs( log( V_t(t) * (N - init) ./ ( init * (N - V_t(t)) ) )).^2);
+    second = sum( t .* log( V_t(t) * (N - init) ./ ( init * (N - V_t(t)) ) ))^2;
+    J_N = first - a* second;
+
+    if (J_N >= J_old)
+        break;
+    end
+
+    % Keep track of J_N values for later.
+    J_N_vals = [J_N_vals J_N];
+    J_old = J_N;
+    N = N+1;
+end
+
+% Plot all of the intermediary J_N values
+plot(0:(size(J_N_vals, 2)-2), J_N_vals(2:(size(J_N_vals, 2))))
+title('Intermediate J(N) values')
+
+% Calculate beta hat
+B_hat = a * sum(t * (log((V_t(t) * c_max) / (V_t(1) * (N_max - V_t(t))))));
+
+% Print N hat (N estimate) and B hat
+disp(append("B_hat estimate is: ", string(B_hat)))
+disp(append("N estimate is: ", string(N)))
+
+% Get the objective function J(beta, N) below
+J_obj = sum((B_hat_max * t - log(V_t(t) / (N_max - V_t(t))) - b_max).^2);
+disp(append("Objective function has value: ", string(J_obj)))
+
+% Plot I(t) vs our estimate
+figure
+hold on
+NI = N * init;
+% Plot I(t) first...
+plot(0:1039, V_t(1:1040), 'r-')
+% ...and our estimate second!
+plot(0:1039, NI * (1./(V_t(1) + (N - V_t(1)).*exp(-1 * B_hat * (0:1039)))), 'g-')
+legend({'Real', 'Estimated'}, 'Location', 'southeast')
+axis tight
+title('Graph of I(t)')
+hold off
+%% Part b, III
+N = N_min;
+J_old = inf;
+J_N = 0;
+length = N_max - N;
+J_N_vals = zeros(1, length);
+
+
+while N < N_max
+    % This is algorithm 2, step 2.1.
+    first = sum( abs( log( V_t(t) * (N - init) ./ ( init * (N - V_t(t)) ) )).^2);
+    second = sum( t .* log( V_t(t) * (N - init) ./ ( init * (N - V_t(t)) ) ))^2;
+    J_N = first - a* second;
+
+    if (J_N < J_old)
+        J_old = J_N;
+    end
+
+    % Keep track of J_N values for later.
+    J_N_vals(N - N_max + length + 1) = J_N;
+
+    N = N+1;
+end
+
+% Plot all of the intermediary J_N values
+plot(0:(size(J_N_vals, 2)-2), J_N_vals(2:(size(J_N_vals, 2))))
+title('Intermediate J(N) values')
+
+% P
+disp(append("Global minimum for J_N values: ", string(min(J_N_vals))))
 
 %% Question 2
