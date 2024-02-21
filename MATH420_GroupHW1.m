@@ -67,7 +67,10 @@ hold off
 N = N_min;
 J_old = inf;
 J_N = 0;
+% These two variables are just used to keep data from this part.
 J_N_prev = 0;
+N_prev = 0;
+
 init = V_t(1);
 a = (6/(1040 * (1040 + 1) * (2*1040 + 1)));
 % Assigning T to be a vector.
@@ -95,14 +98,15 @@ plot(0:(size(J_N_vals, 2)-2), J_N_vals(2:(size(J_N_vals, 2))))
 title('Intermediate J(N) values')
 
 % Calculate beta hat
-B_hat = a * sum(t * (log((V_t(t) * c_max) / (V_t(1) * (N_max - V_t(t))))));
+B_hat = a * sum(t * (log((V_t(t) * c_max) / (V_t(1) * (N - V_t(t))))));
 
 % Print N hat (N estimate) and B hat
 disp(append("B_hat estimate is: ", string(B_hat)))
 disp(append("N estimate is: ", string(N)))
 
 % Get the objective function J(beta, N) below
-J_obj = sum((B_hat_max * t - log(V_t(t) / (N_max - V_t(t))) - b_max).^2);
+b = log(V_t(1) / (N - V_t(1)));
+J_obj = sum((B_hat * t - log(V_t(t) / (N - V_t(t))) - b).^2);
 disp(append("Objective function has value: ", string(J_obj)))
 
 % Plot I(t) vs our estimate
@@ -118,8 +122,9 @@ axis tight
 title('Graph of I(t)')
 hold off
 
-% Saving this for the next part, part IV.
+% Saving these for later parts.
 J_N_prev = J_N;
+N_prev = N;
 
 %% Part b, IV
 N = N_min;
@@ -155,4 +160,41 @@ disp(append("The previous global min was: ", string(J_N_prev)))
 % The results seem to check out with the last part, so there doesn't seem
 % to be much of a change, no.
 
-%% Question 2
+%% Question One, part 2, sub c
+N_vals = N_min:N_prev;
+B_hat_vals = zeros(1, size(N_vals, 2));
+for b=1:size(N_vals, 2)
+    B_hat_vals(b) =  a * sum(t * (log((V_t(t) * c_max) / (V_t(1) * (N_vals(b) - V_t(t))))));
+end
+
+I_vals = zeros(1, size(N_vals, 2));
+for b=1:size(N_vals, 2)
+    I_vals(b) = min(sum(abs((N_vals(b) * init) * (1./(V_t(1) + (N_vals(b) - V_t(1)).*exp(-1 * B_hat_vals(b) * (0:1039)))))));
+end
+
+hold on
+plot(N_vals, I_vals, 'r-')
+axis tight
+title("Function N to I(N, B_N)")
+
+%% Question 2 Initializers
+clearvars
+T = readtable("project5_data.xlsx");
+V = table2array(T(2, 13:1103));
+Y = table2array(T(3, 13:1103));
+V_t = V(52:119);
+Y_t = Y(52:119);
+% Setting up I like the problem suggests
+I = V((52:199) + 7) - V((52:199) - 7);
+
+%% Question 2, 1
+% Plot the rates of detected infections and cumulative deaths
+figure
+plot(I, 'r-')
+title('Calculated Rates of Detected Infections')
+
+figure
+plot(Y, 'g-')
+title('Cumulative Deaths')
+
+
