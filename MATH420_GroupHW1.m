@@ -8,6 +8,12 @@ V_t = V(52:1091);
 
 %% Question 1, part a
 N_max = 909327;
+%Should it be like this? :
+%set I(t) = V_t(t+52) for 0<t<119 (loop through entries 52 to 171 and
+%append to a vector 'I')
+%N_min = 1 + I(119)
+%Since we don't actually want to index all the way up to 1040, just T_max
+%which is 119
 N_min = 1 + V_t(1040);
 a = (6/(1040 * (1040 + 1) * (2*1040 + 1)));
 disp("t0 is 52")
@@ -182,10 +188,10 @@ clearvars
 T = readtable("project5_data.xlsx");
 V = table2array(T(2, 13:1103));
 Y = table2array(T(3, 13:1103));
-V_t = V(52:119);
-Y_t = Y(52:119);
+V_t = V(52:171);
+Y_t = Y(52:171);
 % Setting up I like the problem suggests
-I = V((52:199) + 7) - V((52:199) - 7);
+I = V((52:171) + 7) - V((52:171) - 7);
 
 %% Question 2, 1
 % Plot the rates of detected infections and cumulative deaths
@@ -197,4 +203,38 @@ figure
 plot(Y, 'g-')
 title('Cumulative Deaths')
 
+%% Question 2.2 + 2.3
+clearvars
+%Euler scheme for solving the SIR problem:
+a = (0.05:0.01:0.2);
+r_ratio = (0.8:0.05:2.2);
+size(a)
+size(r_ratio)
+index = 1;
+%Calculating the euler approximation for all values of alpha and beta
+%described in the set.
+for i = 1:16
+    for r = 1:29
+        alpha = a(i);
+        beta = r_ratio(r)*alpha;
+        [I(index,1),R(index,1)] = euler(909327,6,0,.01,119,alpha,beta);
+        index = index + 1;
+    end
+end
+[I,R]
 
+%Function that implements the euler scheme (Q 2.2)
+function [I,R] = euler(S_0,I_0,R_0, h,t_max,alpha,beta)
+    S = S_0;
+    I = I_0;
+    R = R_0;
+    S_old = S;
+    I_old = I;
+    for t = 0:h:t_max
+        S = S + ((-1)*beta*S_old*(I_old/909327))*h;
+        I = I + (beta*S_old*(I_old/909327)-alpha*(I_old))*h;
+        R = R + (alpha*I_old)*h;
+        S_old = S;
+        I_old = I;
+    end
+end
