@@ -4,18 +4,12 @@
 %% Question 1 Initializers
 T = readtable("project5_data.xlsx");
 V = table2array(T(2, 13:1103));
-V_t = V(52:1091);
+V_t = V(52:(119 + 51));
 
 %% Question 1, part a
 N_max = 909327;
-%Should it be like this? :
-%set I(t) = V_t(t+52) for 0<t<119 (loop through entries 52 to 171 and
-%append to a vector 'I')
-%N_min = 1 + I(119)
-%Since we don't actually want to index all the way up to 1040, just T_max
-%which is 119
-N_min = 1 + V_t(1040);
-a = (6/(1040 * (1040 + 1) * (2*1040 + 1)));
+N_min = 1 + V_t(119);
+a = (6/(119 * (119 + 1) * (2*119 + 1)));
 disp("t0 is 52")
 
 % Below is Algorithm 1
@@ -27,10 +21,10 @@ sum_max = 0;
 sum_min = 0;
 c_max = (N_max - V_t(1));
 c_min = (N_min - V_t(1));
-for t = 1:1040
+for t = 1:119
     % Calculating the summation in both B_hat approximations.
     sum_max = sum_max + t * (log((V_t(t) * c_max) / (V_t(1) * (N_max - V_t(t)))));
-    sum_min = sum_min + t * (log((V_t(t) * c_min) / (V_t(1) * (N_min - V_t(t)))));
+    sum_min = sum_min + t * (log((V_t(t) * c_min) / (V_t(1) * (N_min - V_t(t)))))
 end
 
 % This gives us the final B_hat value for both N_max and N_min.
@@ -43,7 +37,7 @@ b_min = log(V_t(1) / (N_min - V_t(1)));
 J_max = 0;
 J_min = 0;
 
-for t = 1:1040
+for t = 1:119
     % Calculating the objective function summation.
     J_max = J_max + (B_hat_max * t - log(V_t(t) / (N_max - V_t(t))) - b_max)^2;
     J_min = J_min + (B_hat_min * t - log(V_t(t) / (N_min - V_t(t))) - b_min)^2;
@@ -59,13 +53,13 @@ NI_min = N_min * V_t(1);
 
 hold on
 % First, plot I(t)
-plot(0:1039, V_t(1:1040), 'r-')
+plot(0:118, V_t(1:119), 'r-')
 % Then, plot the estimated value using the N_max pop
-plot(0:1039, NI_max * (1./(V_t(1) + (N_max - V_t(1)).*exp(-1 * B_hat_max * (0:1039)))), 'g-')
+plot(0:118, NI_max * (1./(V_t(1) + (N_max - V_t(1)).*exp(-1 * B_hat_max * (0:118)))), 'g-')
 % Finally, plot with the N_min estimation
-plot(0:1039, NI_min * (1./(V_t(1) + (N_min - V_t(1)).*exp(-1 * B_hat_min * (0:1039)))), 'b-')
+plot(0:118, NI_min * (1./(V_t(1) + (N_min - V_t(1)).*exp(-1 * B_hat_min * (0:118)))), 'b-')
 axis tight
-legend('Real', 'Estimated N_{max}', 'Estimated N_{min}')
+legend({'Real', 'Estimated N_{max}', 'Estimated N_{min}'}, 'Location', 'northwest')
 title('Graph of I(t)')
 hold off
 
@@ -78,9 +72,9 @@ J_N_prev = 0;
 N_prev = 0;
 
 init = V_t(1);
-a = (6/(1040 * (1040 + 1) * (2*1040 + 1)));
+a = (6/(119 * (119 + 1) * (2*119 + 1)));
 % Assigning T to be a vector.
-t = 1:1040;
+t = 1:119;
 J_N_vals = 0;
 
 while true
@@ -120,9 +114,9 @@ figure
 hold on
 NI = N * init;
 % Plot I(t) first...
-plot(0:1039, V_t(1:1040), 'r-')
+plot(0:118, V_t(1:119), 'r-')
 % ...and our estimate second!
-plot(0:1039, NI * (1./(V_t(1) + (N - V_t(1)).*exp(-1 * B_hat * (0:1039)))), 'g-')
+plot(0:118, NI * (1./(V_t(1) + (N - V_t(1)).*exp(-1 * B_hat * (0:118)))), 'g-')
 legend({'Real', 'Estimated'}, 'Location', 'southeast')
 axis tight
 title('Graph of I(t)')
@@ -162,7 +156,7 @@ title('Intermediate J(N) values')
 
 % Printing and checking the minimum J_N value.
 disp(append("Global minimum for J_N values: ", string(min(J_N_vals))))
-disp(append("The previous global min was: ", string(J_N_prev)))
+disp(append("The previous estimated min was: ", string(J_N_prev)))
 % The results seem to check out with the last part, so there doesn't seem
 % to be much of a change, no.
 
@@ -175,7 +169,7 @@ end
 
 I_vals = zeros(1, size(N_vals, 2));
 for b=1:size(N_vals, 2)
-    I_vals(b) = min(sum(abs((N_vals(b) * init) * (1./(V_t(1) + (N_vals(b) - V_t(1)).*exp(-1 * B_hat_vals(b) * (0:1039)))))));
+    I_vals(b) = min(sum(abs((N_vals(b) * init) * (1./(V_t(1) + (N_vals(b) - V_t(1)).*exp(-1 * B_hat_vals(b) * (0:119)))))));
 end
 
 hold on
@@ -221,6 +215,7 @@ for i = 1:16
         index = index + 1;
     end
 end
+
 [I,R]
 
 %Function that implements the euler scheme (Q 2.2)
