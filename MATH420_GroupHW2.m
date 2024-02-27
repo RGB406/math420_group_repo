@@ -1,14 +1,14 @@
 %% AMSC 420 Group Homework 2
 % Group: Robert "Eddie" Bull, Alexander Klein
-
+clearvars
 %% Question 1 Initializers
 T = readtable("project5_data.xlsx");
 T_max = 120;
 
 Y = table2array(T(3, 13:1103));
 V = table2array(T(2, 13:1103));
-Y_t = Y(52:(T_max + 52));
-V_t = V(52:(T_max + 52));
+Y_t = Y(52:(T_max + 51));
+V_t = V(52:(T_max + 51));
 
 % Initializing parameters
 N = 909327;
@@ -18,7 +18,7 @@ p = [1, 2, inf];
 c = [0, 1; 1, 1];
 
 % Setting I(t)
-I_t = V((52:(T_max + 52)) + Tau_0) - V((52:(T_max + 52)) - Tau_0);
+I_t = V((52:(T_max + 51)) + Tau_0) - V((52:(T_max + 51)) - Tau_0);
 
 % Establishing Omega
 R_0 = 0.8:0.05:2.2;
@@ -31,30 +31,45 @@ offset = 0;
 Om = zeros([s_a * s_R, 2]);
 for i = 1:s_a
     for j = 1:s_R
-        Om(i + (offset * (s_R - 1)) + j, 1) = alpha(i);
-        Om(i + (offset * (s_R - 1)) + j, 2) = alpha(i) * R_0(j);
+        Om(i + (offset * (s_R - 1)) + j - 1, 1) = alpha(i);
+        Om(i + (offset * (s_R - 1)) + j - 1, 2) = alpha(i) * R_0(j);
     end
     offset = offset + 1;
 end
 
 %% Question 1
-% First, establish the diffeqs.
+% First, establish parameters.
+format short
 h = 0.01;
 initials = [N, I_t(1), 0];
 
-results = euler_SIR(0.2, 0.4, initials, T_max, h, N) * h;
-r = downsample(results, 1/h);
+S_sim = zeros(size(Om, 1), T_max);
+I_sim = zeros(size(Om, 1), T_max);
+R_sim = zeros(size(Om, 1), T_max);
+
+% Get SIR sim
+for i=1:size(Om, 1)
+    set = Om(i, :);
+    results = euler_SIR(set(1), set(2), initials, T_max, h, N) * h;
+    r = downsample(results, 1/h);
+
+    S_sim(i, :) = r(:, 1);
+    I_sim(i, :) = r(:, 2);
+    R_sim(i, :) = r(:, 3);
+end
 
 
-subplot(3, 1, 1)
-plot(r(:, 1), 'r-')
-subplot(3, 1, 2)
-hold on
-plot(r(:, 2), 'b-')
-plot(I_t(:), 'g-')
-hold off
-subplot(3, 1, 3)
-plot(r(:, 3), 'g-')
+% First, estimate gamma and rho for each p
+for p_i=p
+    min_func_gamma = @(g) norm(Y_t - g * R_sim(:, :), p_i);
+    fminsearch(min_func_gamma, 0)
+
+    min_func_rho = @(rho) norm(I_t - rho * I_sim(:, :), p_i);
+    fminsearch(min_func_rho, 0)
+
+end
+
+
 
 % This is the euler function we'll use for the different alphas and betas
 % Should take inits as S I R and functions as S I R
@@ -69,9 +84,8 @@ results(1, :) = inits;
 
 for t=1.02:step:T_max+1
     index = round((t - 1)/step);
-    R = results(index - 1, 1) ...
+    results(index, 1) = results(index - 1, 1) ...
         + step * dS(alpha, beta, results(index - 1, 1), results(index - 1, 2));
-    results(index, 1) = R;
 
     results(index, 2) = results(index - 1, 2) ...
         + step * dI(alpha, beta, results(index - 1, 1), results(index - 1, 2));
