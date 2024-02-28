@@ -51,12 +51,12 @@ R_sim = zeros(size(Om, 1), T_max);
 % Get SIR simulated
 for i=1:size(Om, 1)
     set = Om(i, :);
-    results = euler_SIR(set(1), set(2), initials, T_max, h, N) * h;
+    results = euler_SIR(set(1), set(2), initials, T_max, h, N);
     r = downsample(results, 1/h);
 
     % SIR saved in individual variables for ease of access later.
     S_sim(i, :) = r(:, 1);
-    I_sim(i, :) = r(:, 2);
+    I_sim(i, :) = r(:, 2) * h;
     R_sim(i, :) = r(:, 3);
 end
 
@@ -111,6 +111,35 @@ J_2s(j, :) = J_2;
 J_infs(j, :) = J_inf;
 end
 
+
+% Now plot some of the surfaces!   
+figure
+subplot(2, 1, 1)
+surf(reshape(J_1s(:, 1), 29, 36))
+title('Surface for J_1 using p = 1 and (0, 1)')
+
+subplot(2, 1, 2)
+surf(reshape(J_1s(:, 2), 29, 36))
+title('Surface for J_1 using p = 1 and (1, 1)')
+
+figure
+subplot(2, 1, 1)
+surf(reshape(J_2s(:, 1), 29, 36))
+title('Surface for J_2 using p = 2 and (0, 1)')
+
+subplot(2, 1, 2)
+surf(reshape(J_2s(:, 2), 29, 36))
+title('Surface for J_2 using p = 2 and (1, 1)')
+
+figure
+subplot(2, 1, 1)
+surf(reshape(J_infs(:, 1), 29, 36))
+title('Surface for J_inf using p = inf and (0, 1)')
+
+subplot(2, 1, 2)
+surf(reshape(J_infs(:, 2), 29, 36))
+title('Surface for J_inf using p = inf and (1, 1)')
+
 % Now lets find alphas and betas for the min values
 % This probably returns more than one value for the minimum. If it does,
 % we'll just use the minimum later.
@@ -119,10 +148,57 @@ end
 [~, min_inf] = min(J_infs);
 
 figure
-surf(reshape(J_1s(:, 1), 36, 29))
-title('Surface for J_1 using p = 1')
+subplot(2, 1, 1)
+hold on
+plot(I_sim(min_1(1), :), 'r-')
+plot(I_t(:), 'b-')
+
+plot(Y_t, 'g-')
+plot(R_sim(1, :), 'y-')
+
+hold off
+title("I_{sim} vs I for p = 1, (0, 1)")
+
+subplot(2, 1, 2)
+hold on
+plot(I_sim(min_1(2), :), 'r-')
+plot(I_t(:), 'b-')
 
 
+plot(Y_t, 'g-')
+plot(R_sim(1, :), 'y-')
+hold off
+title("I_{sim} vs I for p = 1, (1, 1)")
+
+figure
+subplot(2, 1, 1)
+hold on
+plot(I_sim(min_2(1), :), 'r-')
+plot(I_t(:), 'b-')
+hold off
+title("I_{sim} vs I for p = 2, (0, 1)")
+
+subplot(2, 1, 2)
+hold on
+plot(I_sim(min_2(2), :), 'r-')
+plot(I_t(:), 'b-')
+hold off
+title("I_{sim} vs I for p = 2, (1, 1)")
+
+figure
+subplot(2, 1, 1)
+hold on
+plot(I_sim(min_inf(1), :), 'r-')
+plot(I_t(:), 'b-')
+hold off
+title("I_{sim} vs I for p = inf, (0, 1)")
+
+subplot(2, 1, 2)
+hold on
+plot(I_sim(min_inf(2), :), 'r-')
+plot(I_t(:), 'b-')
+hold off
+title("I_{sim} vs I for p = inf, (1, 1)")
 
 %% Problem 2 Initialization
 clearvars
@@ -204,7 +280,7 @@ dR = @(a, b, S, I) a * I;
 results = zeros([T_max/step, 3]);
 results(1, :) = inits;
 
-for t=1.02:step:T_max+1
+for t=(1 + step + step):step:T_max+1
     index = round((t - 1)/step);
     results(index, 1) = results(index - 1, 1) ...
         + step * dS(alpha, beta, results(index - 1, 1), results(index - 1, 2));
