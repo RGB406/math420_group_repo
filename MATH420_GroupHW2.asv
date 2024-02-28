@@ -18,7 +18,7 @@ p = [1, 2, inf];
 c = [0, 1; 1, 1];
 
 % Setting I(t)
-I_t = V((52:(T_max + 52)) + Tau_0) - V((52:(T_max + 52)) - Tau_0);
+I_t = V((52:(T_max + 51)) + Tau_0) - V((52:(T_max + 51)) - Tau_0);
 
 % Establishing Omega
 R_0 = 0.8:0.05:2.2;
@@ -47,28 +47,83 @@ S_sim = zeros(size(Om, 1), T_max);
 I_sim = zeros(size(Om, 1), T_max);
 R_sim = zeros(size(Om, 1), T_max);
 
-% Get SIR sim
+% Get SIR simulated
 for i=1:size(Om, 1)
     set = Om(i, :);
     results = euler_SIR(set(1), set(2), initials, T_max, h, N) * h;
     r = downsample(results, 1/h);
 
+    % SIR saved in individual variables for ease of access later.
     S_sim(i, :) = r(:, 1);
     I_sim(i, :) = r(:, 2);
     R_sim(i, :) = r(:, 3);
 end
 
-syms g rho
+rhos = zeros(3, 1);
+gammas = zeros(3, 1);
 % First, estimate gamma and rho for each p
-for p_i=p
+for j=1:3
+    % We use fminsearch here to get the variables.
+    % I'm sorry. I really tried to use the numeric methods for this.
+    % Symbolic variables absolutely ATE my processor and took eons to load.
+    % I don't regret this.
+    min_func_gamma = @(g) norm(Y_t - g * R_sim(:, :), p(j));
+    gammas(j) = fminsearch(min_func_gamma, 0);
 
+    min_func_rho = @(rho) norm(I_t - rho * I_sim(:, :), p(j));
+    % Restrain the coefficient to be maxed at 1.
+    % Since our N is so absolutely massive for our dataset, this kinda
+    % tracks.
+    rhos(j) = min(fminsearch(min_func_rho, 0), 1);
+end
+[rhos, gammas]
+
+% Now, let's get the J function using 0, 1 and 1, 1
+% We'll use multiple lists to find the minimum.
+% This will be ugly.
+J_1s = zeros([size(Om, 1), 2]);
+J_2s = zeros([size(Om, 1), 2]);
+J_infs = zeros([size(Om, 1), 2]);
+
+
+for j=1:size(Om, 1)
+% First, calculate the sums so we can reference them later for when we need
+% to use all three p-vals.
+rho_sum = [sum((I_t - rhos(1) * I_sim(j, :))),...
+    sum((I_t - rhos(2) * I_sim(j, :)).^2), ...
+    max((I_t - rhos(3) * I_sim(j, :)))];
+% We'll just precompute these for ease of reading.
+gamma_sum = [sum(Y_t - gammas(1) * R_sim(j, :)), ...
+    sum((Y_t - gammas(2) * R_sim(j, :)).^2), ...
+    max(Y_t - gammas(3) * R_sim(j, :))];
+
+% Then we calculate the two different cI and cY
+% J_1(1) is (0, 1) and J_1(2) is (1, 1)
+J_1 = [gamma_sum(1), rho_sum(1) + gamma_sum(1)];
+J_2 = [gamma_sum(2), rho_sum(2) + gamma_sum(2)];
+J_inf = [gamma_sum(3), rho_sum(3) + gamma_sum(3)];
+
+J_1s(j, :) = J_1;
+J_2s(j, :) = J_2;
+J_infs(j, :) = J_inf;
 end
 
+% Now lets find alphas and betas for the min values
+% This probably returns more than one value for the minimum. If it does,
+% we'll just use the minimum later.
+[~, min_1] = min(J_1s);
+[~, min_2] = min(J_2s);
+[~, min_inf] = min(J_infs);
+
+figure
+surf([], J_1s(:, 1))
+title('Surface for J_1 using p = 1')
 
 
 % This is the euler function we'll use for the different alphas and betas
 % Should take inits as S I R and functions as S I R
 function results = euler_SIR(alpha, beta, inits, T_max, step, N) 
+% Initialize diffeqs to pretty up code
 dS = @(a, b, S, I) -1 * b * S * (I/N);
 dI = @(a, b, S, I) b * S * (I/N) - a * I;
 dR = @(a, b, S, I) a * I;
