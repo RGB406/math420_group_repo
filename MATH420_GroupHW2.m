@@ -40,6 +40,7 @@ end
 %% Question 1
 % First, establish parameters.
 format short
+% h = 0.05 i think?
 h = 0.01;
 initials = [N, I_t(1), 0];
 
@@ -122,6 +123,75 @@ surf(reshape(J_1s(:, 1), 36, 29))
 title('Surface for J_1 using p = 1')
 
 
+
+%% Problem 2 Initialization
+clearvars
+T = readtable("project5_data.xlsx");
+Tau_0 = 7;
+T_max = 120;
+V_min = 5;
+p = [1, 2, inf];
+c = [0, 1; 1, 1];
+Y = table2array(T(3, 13:1103));
+V = table2array(T(2, 13:1103));
+Y_t = Y(52:(T_max + 51));
+V_t = V(52:(T_max + 51));
+I_t = V((52:(T_max + 51)) + Tau_0) - V((52:(T_max + 51)) - Tau_0);
+N = 909327;
+
+%Set initial conditions
+S_0 = N;
+R_0 = 0;
+I_0 = I_t(1);
+E_0 = I_0;
+
+%Define variables that make up the set Omega.
+r_0 = 0.8:0.05:2.2;
+alpha = 0.05:0.01:0.4;
+delta = 0.05:0.01:0.4;
+gammas = zeros(3,1);
+rhos = zeros(3,1);
+%% Problem 2 part 1 
+
+% Compute numerical approximations for S,I,E,R
+Om = zeros(size(alpha,2)*size(delta,2)*size(r_0,2),3);
+S_sim = zeros(size(Om,1),120);
+I_sim = zeros(size(Om,1),120);
+E_sim = zeros(size(Om,1),120);
+R_sim = zeros(size(Om,1),120);
+%Populate the Om matrix and SIER sim matrices
+vec = zeros(4,T_max);
+index = 1;
+for a = 1:36
+    for r = 1:29
+        beta = r_0(r) * alpha(a);
+        for d = 1:36
+            Om(index,:) = [alpha(a),beta,delta(d)];
+            index = index + 1;
+            % Store the results of the euler scheme into our sim matrices
+            % Each row represents a different alpha,beta,delta pair from
+            % the set
+            vec = euler_SIER(alpha(a),beta,delta(d),T_max,0.05,N,[S_0,I_0,E_0,R_0]);
+            S_sim(index,:) = vec(:,1);
+            E_sim(index,:) = vec(:,2);
+            I_sim(index,:) = vec(:,3);
+            R_sim(index,:) = vec(:,4);
+        end
+    end
+end
+
+
+% Find optimal gamma and rho for each p-value:
+for i=1:3
+    min_func_gamma = @(g) norm(Y_t - g * R_sim(:, :), p(i));
+    gammas(i) = fminsearch(min_func_gamma, 0);
+
+    min_func_rho = @(rho) norm(I_t - rho * I_sim(:, :), p(i));
+    rhos(i) = min(fminsearch(min_func_rho, 0), 1);
+end
+[rhos, gammas]
+
+
 % This is the euler function we'll use for the different alphas and betas
 % Should take inits as S I R and functions as S I R
 function results = euler_SIR(alpha, beta, inits, T_max, step, N) 
@@ -144,6 +214,28 @@ for t=1.02:step:T_max+1
 
     results(index, 3) = results(index - 1, 3) ...
         + step * dR(alpha, beta, results(index - 1, 1), results(index - 1, 2));
+end
+end
+
+% Euler function for problem 2 (SIER modelling)
+function results = euler_SIER(alpha,beta,delta,T_max,step,N,inits)
+% Initialize the diffeqs and results matrix
+S = inits(1);
+E = inits(2);
+I = inits(3);
+R = inits(4);
+results = zeros(T_max,4);
+
+% Run the euler scheme
+for t = 1:step:T_max
+    S = S + step*((-1 * beta * S * I / N));
+    E = E + step*((beta * S * I / N) - (delta * E));
+    I = I + step*((delta * E) - (alpha * I));
+    R = R + step*(alpha*I);
+    results(round(t),1) = S;
+    results(round(t),2) = E;
+    results(round(t),3) = I;
+    results(round(t),4) = R;
 end
 end
 
