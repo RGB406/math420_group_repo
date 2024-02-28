@@ -56,7 +56,7 @@ for i=1:size(Om, 1)
 
     % SIR saved in individual variables for ease of access later.
     S_sim(i, :) = r(:, 1);
-    I_sim(i, :) = r(:, 2) * h;
+    I_sim(i, :) = r(:, 2);
     R_sim(i, :) = r(:, 3);
 end
 
@@ -147,58 +147,11 @@ title('Surface for J_inf using p = inf and (1, 1)')
 [~, min_2] = min(J_2s);
 [~, min_inf] = min(J_infs);
 
-figure
-subplot(2, 1, 1)
-hold on
-plot(I_sim(min_1(1), :), 'r-')
-plot(I_t(:), 'b-')
 
-plot(Y_t, 'g-')
-plot(R_sim(1, :), 'y-')
+plot_graph(I_sim, I_t, R_sim, Y_t, rhos(1), gammas(1), min_1, "1")
+plot_graph(I_sim, I_t, R_sim, Y_t, rhos(2), gammas(2), min_2, "2")
+plot_graph(I_sim, I_t, R_sim, Y_t, rhos(3), gammas(3), min_inf, "inf")
 
-hold off
-title("I_{sim} vs I for p = 1, (0, 1)")
-
-subplot(2, 1, 2)
-hold on
-plot(I_sim(min_1(2), :), 'r-')
-plot(I_t(:), 'b-')
-
-
-plot(Y_t, 'g-')
-plot(R_sim(1, :), 'y-')
-hold off
-title("I_{sim} vs I for p = 1, (1, 1)")
-
-figure
-subplot(2, 1, 1)
-hold on
-plot(I_sim(min_2(1), :), 'r-')
-plot(I_t(:), 'b-')
-hold off
-title("I_{sim} vs I for p = 2, (0, 1)")
-
-subplot(2, 1, 2)
-hold on
-plot(I_sim(min_2(2), :), 'r-')
-plot(I_t(:), 'b-')
-hold off
-title("I_{sim} vs I for p = 2, (1, 1)")
-
-figure
-subplot(2, 1, 1)
-hold on
-plot(I_sim(min_inf(1), :), 'r-')
-plot(I_t(:), 'b-')
-hold off
-title("I_{sim} vs I for p = inf, (0, 1)")
-
-subplot(2, 1, 2)
-hold on
-plot(I_sim(min_inf(2), :), 'r-')
-plot(I_t(:), 'b-')
-hold off
-title("I_{sim} vs I for p = inf, (1, 1)")
 
 %% Problem 2 Initialization
 clearvars
@@ -315,3 +268,32 @@ for t = 1:step:T_max
 end
 end
 
+% This function should be used for the last part of question 1.
+% Mostly just to cut down on space.
+function plot_graph(sim_field_I, field_I, R_sim, Y, rho, gamma, indices, p_val)
+    
+figure
+    subplot(2, 1, 1)
+    hold on
+    % This plots the case where it's (0, 1)
+    plot(rho * sim_field_I(indices(1), :), 'r-')
+    plot(field_I(:), 'b-')
+    % Now print the Y(t) and R_sim functions
+    plot(Y, 'g-')
+    plot(gamma * R_sim(indices(1), :), 'm-')
+
+    hold off
+    title("I_{sim} vs I for p = " + p_val + ", (0, 1)")
+
+    subplot(2, 1, 2)
+    hold on
+    % This plots the case where it's (1, 1)
+    plot(rho * sim_field_I(indices(2), :), 'r-')
+    plot(field_I(:), 'b-')
+    % Now print the Y(t) and R_sim functions
+    plot(Y, 'g-')
+    plot(gamma * R_sim(indices(1), :), 'm-')
+
+    hold off
+    title("I_{sim} vs I for p = " + p_val + ", (1, 1)")
+end
