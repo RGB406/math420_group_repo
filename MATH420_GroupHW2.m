@@ -155,6 +155,7 @@ plot_graph(I_sim, I_t, R_sim, Y_t, rhos(3), gammas(3), min_inf, "inf")
 
 %% Problem 2 Initialization
 clearvars
+format shortG
 T = readtable("project5_data.xlsx");
 Tau_0 = 7;
 T_max = 120;
@@ -182,13 +183,13 @@ gammas = zeros(3,1);
 rhos = zeros(3,1);
 %% Problem 2 part 1 
 
-% Compute numerical approximations for S,I,E,R
+% Compute numerical approximations for S,E,I,R
 Om = zeros(size(alpha,2)*size(delta,2)*size(r_0,2),3);
 S_sim = zeros(size(Om,1),120);
-I_sim = zeros(size(Om,1),120);
 E_sim = zeros(size(Om,1),120);
+I_sim = zeros(size(Om,1),120);
 R_sim = zeros(size(Om,1),120);
-%Populate the Om matrix and SIER sim matrices
+%Populate the Om matrix and SEIR sim matrices
 vec = zeros(4,T_max);
 index = 1;
 for a = 1:36
@@ -196,30 +197,170 @@ for a = 1:36
         beta = r_0(r) * alpha(a);
         for d = 1:36
             Om(index,:) = [alpha(a),beta,delta(d)];
-            index = index + 1;
             % Store the results of the euler scheme into our sim matrices
             % Each row represents a different alpha,beta,delta pair from
             % the set
-            vec = euler_SIER(alpha(a),beta,delta(d),T_max,0.05,N,[S_0,I_0,E_0,R_0]);
+            vec = euler_SIER(alpha(a),beta,delta(d),T_max,0.05,N,[S_0,E_0,I_0,R_0]);
             S_sim(index,:) = vec(:,1);
             E_sim(index,:) = vec(:,2);
             I_sim(index,:) = vec(:,3);
             R_sim(index,:) = vec(:,4);
+            index = index + 1;
         end
     end
 end
 
 
-% Find optimal gamma and rho for each p-value:
-for i=1:3
+% Find optimal gamma and rho for each p-value:for i = 1:3
+for i = 1:3
     min_func_gamma = @(g) norm(Y_t - g * R_sim(:, :), p(i));
     gammas(i) = fminsearch(min_func_gamma, 0);
 
     min_func_rho = @(rho) norm(I_t - rho * I_sim(:, :), p(i));
-    rhos(i) = min(fminsearch(min_func_rho, 0), 1);
+    rhos(i) = fminsearch(min_func_rho, 0);
 end
 [rhos, gammas]
 
+% Compute the values for Objective function J:
+% c_I,c_Y = (0,1)
+J_1 = zeros(size(Om,1),3);
+% c_I,c_Y = (1,1)
+J_2 = zeros(size(Om,1),3);
+
+for i = 1:size(Om)
+    J_1(i,1) = norm(Y_t-gammas(1)*R_sim(i,:),p(1));
+    J_1(i,2) = norm(Y_t-gammas(2)*R_sim(i,:),p(2));
+    J_1(i,3) = norm(Y_t-gammas(3)*R_sim(i,:),p(3));
+
+    J_2(i,1) = norm(I_t-rhos(1)*I_sim(i,:),p(1)) + norm(Y_t-gammas(1)*R_sim(i,:),p(1));
+    J_2(i,2) = norm(I_t-rhos(2)*I_sim(i,:),p(2)) + norm(Y_t-gammas(2)*R_sim(i,:),p(2));
+    J_2(i,3) = norm(I_t-rhos(3)*I_sim(i,:),p(3)) + norm(Y_t-gammas(3)*R_sim(i,:),p(3));
+end
+
+%store the optimal values for later
+hat_1 = zeros(3,3);
+hat_2 = zeros(3,3);
+%Printing information for problem 2.1
+for j = 1:3
+    disp("[min_J,a_hat,b_hat,d_hat,r0_hat,g_hat,rho_hat] for (c_I,c_Y) = (0,1), p = " + j + " given by: ")
+    [m i] = min(J_1(:,j));
+    hat_1(j,:) = [Om(i,1), Om(i,2), Om(i,3)];
+    [m, Om(i,1), Om(i,2), Om(i,3), Om(i,2)/Om(i,1), gammas(j), rhos(j)]
+end
+
+for j = 1:3
+    disp("[min_J,a_hat,b_hat,d_hat,r0_hat,g_hat,rho_hat] for (c_I,c_Y) = (1,1), p = " + j + " given by: ")
+    [m i] = min(J_2(:,j));
+    hat_2(j,:) = [Om(i,1), Om(i,2), Om(i,3)];
+    [m, Om(i,1), Om(i,2), Om(i,3), Om(i,2)/Om(i,1), gammas(j), rhos(j)]
+end
+
+
+%% Problem 2, part 2
+% Plotting the surfaces
+% First we need to compute sub-matrices of Om that store the alpha-beta
+% pairs we want:
+J_1_ab = zeros(size(alpha,2),size(r_0,2));
+J_2_ab = zeros(size(alpha,2),size(r_0,2));
+tolerance = 0.0001;
+% Surfing over the function (alpha,beta) --> J
+for j = 1:3
+    for i = 1:size(Om,1)
+        %build J_ab for each p-value (1 to 3)
+        if(Om(i,3) == hat_1(j,3))
+            J_1_ab(find(alpha == Om(i,1)), find(abs(r_0 - (Om(i,2)/Om(i,1))) < tolerance)) = J_1(i,j);
+        end
+        if(Om(i,3) == hat_2(j,3))
+            J_2_ab(find(alpha == Om(i,1)), find(abs(r_0 - (Om(i,2)/Om(i,1))) < tolerance)) = J_2(i,j);
+        end
+    end
+    %surf over each J_ab
+    figure();
+    subplot(2, 1, 1)
+    surf(J_1_ab)
+    title("(alpha,beta) --> J for p = " + p(j) + " (c_I,c_Y) = (0,1)")
+    subplot(2, 1, 2)
+    surf(J_2_ab)
+    title("(alpha,beta) --> J for p = " + p(j) + " (c_I,c_Y) = (1,1)")
+end
+
+% Surfing over the function (alpha,delta) --> J
+J_1_ad = zeros(size(alpha,2),size(delta,2));
+J_2_ad = zeros(size(alpha,2),size(delta,2));
+for j = 1:3
+    for i = 1:size(Om,1)
+        %build J_ad for each p-value (1 to 3)
+        if(abs(Om(i,2)/Om(i,1) - hat_1(j,2)/hat_1(j,1)) < tolerance)
+            J_1_ad(find(alpha == Om(i,1)), find(delta == Om(i,3))) = J_1(i,j);
+        end
+        if(abs(Om(i,2)/Om(i,1) - hat_2(j,2)/hat_2(j,1)) < tolerance)
+            J_2_ad(find(alpha == Om(i,1)), find(delta == Om(i,3))) = J_2(i,j);
+        end
+    end
+    %surf over each J_ad
+    figure();
+    subplot(2, 1, 1)
+    surf(J_1_ad)
+    title("(alpha,delta) --> J for p = " + p(j) + " (c_I,c_Y) = (0,1)")
+    subplot(2, 1, 2)
+    surf(J_2_ad)
+    title("(alpha,delta) --> J for p = " + p(j) + " (c_I,c_Y) = (1,1)")
+end
+
+% Surfing over the function (beta,delta) --> J
+J_1_bd = zeros(size(r_0,2),size(delta,2));
+J_2_bd = zeros(size(r_0,2),size(delta,2));
+for j = 1:3
+    for i = 1:size(Om,1)
+        %build J_bd for each p-value (1 to 3)
+        if(Om(i,1) == hat_1(j,1))
+            J_1_bd(find(abs(r_0 - (Om(i,2)/Om(i,1))) < tolerance), find(delta == Om(i,3))) = J_1(i,j);
+        end
+        if(Om(i,1) == hat_2(j,1))
+            J_2_bd(find(abs(r_0 - (Om(i,2)/Om(i,1))) < tolerance), find(delta == Om(i,3))) = J_2(i,j);
+        end
+    end
+    %surf over each J_bd
+    figure();
+    subplot(2, 1, 1)
+    surf(J_1_bd)
+    title("(beta,delta) --> J for p = " + p(j) + " (c_I,c_Y) = (0,1)")
+    subplot(2, 1, 2)
+    surf(J_2_bd)
+    title("(beta,delta) --> J for p = " + p(j) + " (c_I,c_Y) = (1,1)")
+end
+
+%% Problem 2, part 3
+% Iterate through all 3 p-values:
+for j = 1:3
+    % Plot the I(t), Y(t) data for (0,1) case
+    [m i] = min(J_1(:,j));
+    figure()
+    subplot(2, 1, 1);
+    plot(I_t)
+    hold on;
+    plot(I_sim(i,:));
+    title("(0,1) plot of I(t) vs I_sim for p = " + p(j))
+    subplot(2, 1, 2);
+    plot(Y_t);
+    hold on;
+    plot(gammas(j)*R_sim(i,:));
+    title("(0,1) plot of Y(t) vs Y_sim for p = " + p(j))
+
+    % (1,1) case
+    [m i] = min(J_2(:,j));
+    figure()
+    subplot(2, 1, 1);
+    plot(I_t)
+    hold on;
+    plot(I_sim(i,:));
+    title("(1,1) plot of I(t) vs I_sim for p = " + p(j))
+    subplot(2, 1, 2);
+    plot(Y_t);
+    hold on;
+    plot(gammas(j)*R_sim(i,:));
+    title("(1,1) plot of Y(t) vs Y_sim for p = " + p(j))
+end
 
 % This is the euler function we'll use for the different alphas and betas
 % Should take inits as S I R and functions as S I R
