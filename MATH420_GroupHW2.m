@@ -39,8 +39,7 @@ end
 
 %% Question 1
 % First, establish parameters.
-format short
-% h = 0.05 i think?
+format shortG
 h = 0.01;
 initials = [N, I_t(1), 0];
 
@@ -77,7 +76,7 @@ for j=1:3
     % tracks.
     rhos(j) = min(fminsearch(min_func_rho, 0), 1);
 end
-[rhos, gammas]
+[rhos, gammas];
 
 % Now, let's get the J function using 0, 1 and 1, 1
 % We'll use multiple lists to find the minimum.
@@ -106,9 +105,9 @@ J_inf = [gamma_sum(3), rho_sum(3) + gamma_sum(3)];
 
 % Putting the J functions for each pair into the matrix. This way, we
 % should be able to store 
-J_1s(j, :) = J_1;
-J_2s(j, :) = J_2;
-J_infs(j, :) = J_inf;
+J_1s(j, :) = abs(J_1);
+J_2s(j, :) = abs(J_2);
+J_infs(j, :) = abs(J_inf);
 end
 
 
@@ -146,6 +145,30 @@ title('Surface for J_inf using p = inf and (1, 1)')
 [~, min_1] = min(J_1s);
 [~, min_2] = min(J_2s);
 [~, min_inf] = min(J_infs);
+% Print the data for 1.1
+[m,i] = min(J_1s(:,1));
+disp("[min_J,a_hat,b_hat,r0_hat,g_hat,rho_hat] for (c_I,c_Y) = (0,1), p = 1 given by: ")
+[m, Om(i,1), Om(i,2), Om(i,2)/Om(i,1), gammas(1), rhos(1)]
+
+[m,i] = min(J_2s(:,1));
+disp("[min_J,a_hat,b_hat,r0_hat,g_hat,rho_hat] for (c_I,c_Y) = (0,1), p = 2 given by: ")
+[m, Om(i,1), Om(i,2), Om(i,2)/Om(i,1), gammas(2), rhos(2)]
+
+[m,i] = min(J_infs(:,1));
+disp("[min_J,a_hat,b_hat,r0_hat,g_hat,rho_hat] for (c_I,c_Y) = (0,1), p = inf given by: ")
+[m, Om(i,1), Om(i,2), Om(i,2)/Om(i,1), gammas(3), rhos(3)]
+
+[m,i] = min(J_1s(:,2));
+disp("[min_J,a_hat,b_hat,r0_hat,g_hat,rho_hat] for (c_I,c_Y) = (1,1), p = 1 given by: ")
+[m, Om(i,1), Om(i,2), Om(i,2)/Om(i,1), gammas(1), rhos(1)]
+
+[m,i] = min(J_2s(:,2));
+disp("[min_J,a_hat,b_hat,r0_hat,g_hat,rho_hat] for (c_I,c_Y) = (1,1), p = 2 given by: ")
+[m, Om(i,1), Om(i,2), Om(i,2)/Om(i,1), gammas(2), rhos(2)]
+
+[m,i] = min(J_infs(:,2));
+disp("[min_J,a_hat,b_hat,r0_hat,g_hat,rho_hat] for (c_I,c_Y) = (1,1), p = inf given by: ")
+[m, Om(i,1), Om(i,2), Om(i,2)/Om(i,1), gammas(3), rhos(3)]
 
 
 plot_graph(I_sim, I_t, R_sim, Y_t, rhos(1), gammas(1), min_1, "1")
@@ -219,7 +242,7 @@ for i = 1:3
     min_func_rho = @(rho) norm(I_t - rho * I_sim(:, :), p(i));
     rhos(i) = fminsearch(min_func_rho, 0);
 end
-[rhos, gammas]
+[rhos, gammas];
 
 % Compute the values for Objective function J:
 % c_I,c_Y = (0,1)
