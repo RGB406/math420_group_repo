@@ -56,7 +56,7 @@ rhos = zeros(size(Om,1),3);
 
 % First, optimize the alpha and beta
 for i=1:size(Om, 1)
-    syms f(gamma)
+    % syms f(gamma)
     % First, get the results for the simulation.
     set = Om(i, :);
     results = euler_SIR(set(1), set(2), initials, T_max, h, N);
@@ -82,7 +82,7 @@ for i=1:size(Om, 1)
     gammas(i,1) = r_k(index);
 
     % Closed form solution for gamma when p = 2
-    gammas(i,2) = sum(Y_t(Tau_0:T_max)'.*r(Tau_0:T_max, 3))./sum(r(Tau_0:T_max, 3).^2);
+    gammas(i,2) = min(sum(Y_t(Tau_0:T_max)'.*r(Tau_0:T_max, 3))./sum(r(Tau_0:T_max, 3).^2), 1);
 
     % Slides have this using V_t, but I get the impression we should be
     % using R_sim.
@@ -97,28 +97,54 @@ for i=1:size(Om, 1)
         b(j,1) = (-1)^mod(j,2)*Y_t(Tau_0 + ceil(j/2) - 1);
     end
     x = linprog(f,A,b);
-    gammas(i,3) = x(2);
+    gammas(i,3) = min(x(2), 1);
 
 
     % Now we'll optimize rho
-    % rho_1 =
-    % rho_2 =
-    % rho_inf =
+    % Going to attempt I^l method with rho
+    r_k = zeros(T_max-Tau_0,1);
+    f_k = zeros(T_max-Tau_0,1);
+    for k = 1:(T_max-Tau_0)
+        r_k(k) = Y_t(k + Tau_0)/r(k,3);
+        % Don't consider values of r that aren't in [0,1]
+        if r_k(k) >= 0 && r_k(k) <= 1
+            f_k(k,1) = sum(abs(transpose(I_t(1,Tau_0:T_max)) - r_k(k)*r(1:T_max-Tau_0 + 1,2)));
+        else
+            f_k(k,1) = inf;
+        end
+    end
+    [m,index] = min(f_k);
+    rhos(i,1) = r_k(index);
+
+    % Trying closed form solution with I_t and I_sim
+    rhos(i, 2) = min(sum(I_t(Tau_0:T_max)'.*r(Tau_0:T_max, 2))./sum(r(Tau_0:T_max, 2).^2), 1);
+    
+    % And then the linear program with I_t. This doesn't seem to work.
+    A = [-1 * ones(2*(T_max-Tau_0+1), 1), zeros(2*(T_max-Tau_0+1), 1)];
+    b = zeros(2*(T_max-Tau_0+1), 1);
+    f = [1;0];
+    for j = 1:size(A)
+        A(j,2) = (-1)^mod(j,2)*r(ceil(j/2),2);
+        b(j,1) = (-1)^mod(j,2)*I_t(Tau_0 + ceil(j/2) - 1);
+    end
+    x = linprog(f,A,b);
+    rhos(i,3) = x(2);
+
 
     % Precalculating the rho and gamma summations for later
-    %rho_sum = [sum((I_t - rho_1 * I_sim(i, :))),...
-    %sum((I_t - rho_2 * I_sim(i, :)).^2), ...
-    %max((I_t - rho_inf * I_sim(i, :)))];
+    rho_sum = [sum((I_t - rhos(i, 1) * r(:, 2))),...
+    sum((I_t - rhos(i, 2) * r(:, 2)).^2), ...
+    max((I_t - rhos(i, 3) * r(:, 2)))];
 
-    %gamma_sum = [sum(Y_t - gamma_1 * R_sim(i, :)), ...
-    %sum((Y_t - gamma_2 * R_sim(i, :)).^2), ...
-    %max(Y_t - gamma_3 * R_sim(i, :))];
+    gamma_sum = [sum(Y_t - gammas(i, 1) * r(:, 3)), ...
+    sum((Y_t - gammas(i, 2) * r(:, 3)).^2), ...
+    max(Y_t - gammas(i, 3) * r(:, 3))];
 
     % Then we calculate the two different cI and cY
     % J_1(1) is (0, 1) and J_1(2) is (1, 1)
-    %J_1 = [gamma_sum(1), rho_sum(1) + gamma_sum(1)];
-    %J_2 = [gamma_sum(2), rho_sum(2) + gamma_sum(2)];
-    %J_inf = [gamma_sum(3), rho_sum(3) + gamma_sum(3)];
+    J_1 = [gamma_sum(1), rho_sum(1) + gamma_sum(1)];
+    J_2 = [gamma_sum(2), rho_sum(2) + gamma_sum(2)];
+    J_inf = [gamma_sum(3), rho_sum(3) + gamma_sum(3)];
 end
 
 %% Functions
