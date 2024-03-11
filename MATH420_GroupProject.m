@@ -29,6 +29,10 @@ initials = [N, I_t(1), 0];
 [pred_1, pred_2, pred_inf, rs_pred, gs_pred] =...
     third_prediction_SIR(Y, V, Om, C_s, 7, t_0, N);
 
+plot_surfs(J_1s, "1")
+plot_surfs(J_2s, "2")
+plot_surfs(J_infs, "inf")
+
 
 disp("The optimal J-values for p = 1 are: [" + join(string(val_1), ', ') + "]")
 plot_graph(Om(ind_1, :), initials, T_max, h, N, I_t, Y_t, rhos, gammas, ind_1, 1, C_s,...
@@ -44,7 +48,8 @@ plot_graph(Om(ind_inf, :), initials, T_max, h, N, I_t, Y_t, rhos, gammas, ind_in
 
 %% SIR Validation
 % Here, we'll use the validation set (project5_validation) instead of the
-% normal dataset we've used previously.
+% normal dataset we've used previously. This set is universally
+% distributed, but I named it similarly to the data set for ease.
 T_max = 120;
 
 [Y, V, t_0, N, Om] = setup("project5_validation.xlsx");
@@ -74,6 +79,10 @@ plot_graph(Om(ind_2, :), initials, T_max, h, N, I_t, Y_t, rhos, gammas, ind_2, 2
 disp("The optimal J-values for p = inf are: [" + join(string(val_inf), ", ") + "]")
 plot_graph(Om(ind_inf, :), initials, T_max, h, N, I_t, Y_t, rhos, gammas, ind_inf, 3, C_s,...
     rs_pred, gs_pred, Om(pred_inf, :))
+
+plot_surfs(J_1s, "1")
+plot_surfs(J_2s, "2")
+plot_surfs(J_infs, "inf")
 
 %% Functions
 
@@ -154,16 +163,16 @@ p_val = p_vals(p);
 for i=(1:size(Omega_set, 1))
 
     euler_res = euler_SIR(Omega_set(i, 1), Omega_set(i, 2), initials, T_max, h, N);
-    euler_pred = euler_SIR(Omega_pred(i, 1), Omega_pred(i, 2), initials, T_max, h, N);
+    euler_pred = euler_SIR(Omega_pred(i, 1), Omega_pred(i, 2), initials, 2000, h, N);
     rho_pred = rs_pred(i, p);
     gamma_pred = gs_pred(i, p);
-    rho = rhos(indices(1), p);
-    gamma = gammas(indices(1), p);
+    rho = rhos(indices(i), p);
+    gamma = gammas(indices(i), p);
     disp('The optimal values for p = ' + p_val + " and [c_I, c_Y] = [" + join(string(C_s(i, :)), ', ') + "] are:")
     disp('alpha, beta = [' + join(string(Omega_set(i, :))) + "]")
     disp('rho, gamma = [' + string(rho) + ", " + string(gamma) + "]")
 
-    [mindex, ~] = find(rho_pred * euler_pred(10:T_max, 2) < 5);
+    [mindex, ~] = find(rho_pred * euler_pred(10:2000, 2) < 5);
     if ~isempty(mindex)
         disp('The predicted t for when I < 5 is = ' + string(mindex(1)))
     else
@@ -176,11 +185,11 @@ for i=(1:size(Omega_set, 1))
 
     plot(rho * euler_res(:, 2), 'r-')
     plot(I(:), 'b-')
-    plot(rho_pred * euler_pred(:, 2), 'r--')
+    plot(rho_pred * euler_pred(1:T_max, 2), 'r--')
 
-    plot(gamma * euler_res(:, 3), 'm-')
+    plot(gamma * euler_res(:, 3), 'black-')
     plot(Y, 'g-')
-    plot(gamma_pred * euler_pred(:, 3), 'm--')
+    plot(gamma_pred * euler_pred(1:T_max, 3), 'black--')
 
     axis tight
 
@@ -302,4 +311,24 @@ function [ind_1_pred, ind_2_pred, ind_inf_pred, rhos_pred, gammas_pred] = ...
 rhos_pred = [rhos(ind_1_pred, 1) rhos(ind_2_pred, 2) rhos(ind_inf_pred, 3)];
 gammas_pred = [gammas(ind_1_pred, 1) gammas(ind_2_pred, 2) gammas(ind_inf_pred, 3)];
 
+for i=1:size(C_s, 1)
+    disp("[c_I, c_Y] = [" + join(string(C_s(i, :)), ', ') + "]")
+    disp('Prediction gammas: [' + join(string(gammas_pred(i, :)), ", ") + ']')
+    disp('Prediction rhos: [' + join(string(rhos_pred(i, :)), ", ") + ']')
 end
+
+end
+
+function plot_surfs(J_vals, p_val)
+
+figure
+subplot(2, 1, 1)
+surf(reshape(J_vals(:, 1), 29, 36))
+title('Surface for J_' + p_val + 'using p = ' + p_val + ' and (0, 1)')
+
+subplot(2, 1, 2)
+surf(reshape(J_vals(:, 2), 29, 36))
+title('Surface for J_' + p_val + 'using p = ' + p_val + ' and (1, 1)')
+
+end
+
