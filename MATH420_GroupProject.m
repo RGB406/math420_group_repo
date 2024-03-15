@@ -170,6 +170,7 @@ for i=(1:size(Omega_set, 1))
     gamma = gammas(indices(i), p);
     disp('The optimal values for p = ' + p_val + " and [c_I, c_Y] = [" + join(string(C_s(i, :)), ', ') + "] are:")
     disp('alpha, beta = [' + join(string(Omega_set(i, :))) + "]")
+    disp('R_{0} = ' + string(Omega_set(i, 2)/Omega_set(i, 1)))
     disp('rho, gamma = [' + string(rho) + ", " + string(gamma) + "]")
 
     [mindex, ~] = find(rho_pred * euler_pred(10:2000, 2) < 5);
