@@ -29,9 +29,9 @@ initials = [N, I_t(1), 0];
 [pred_1, pred_2, pred_inf, rs_pred, gs_pred] =...
     third_prediction_SIR(Y, V, Om, C_s, 7, t_0, N);
 
-plot_surfs(J_1s, "1")
-plot_surfs(J_2s, "2")
-plot_surfs(J_infs, "inf")
+%plot_surfs(J_1s, "1")
+%plot_surfs(J_2s, "2")
+%plot_surfs(J_infs, "inf")
 
 
 disp("The optimal J-values for p = 1 are: [" + join(string(val_1), ', ') + "]")
@@ -182,20 +182,20 @@ for i=(1:size(Omega_set, 1))
 
     figure
     hold on
-
     plot(rho * euler_res(:, 2), 'r-')
     plot(I(:), 'b-')
     plot(rho_pred * euler_pred(1:T_max, 2), 'r--')
-
+    title("{\rho} * I_{sim} vs I for p = " + p_val + ", " + "[" + join(string(C_s(i, :)), ",") + "]")
+    legend('Modelled I', 'Measured I', 'Predicted I')
+    hold off
+    figure
+    hold on
     plot(gamma * euler_res(:, 3), 'black-')
     plot(Y, 'g-')
     plot(gamma_pred * euler_pred(1:T_max, 3), 'black--')
-
-    axis tight
-
     hold off
-    title("I_{sim} vs I for p = " + p_val + ", " + "[" + join(string(C_s(i, :)), ",") + "]")
-    legend('Modelled I', 'Measured I', 'Predicted I', 'Modelled Y', 'Measured Y', 'Predicted Y')
+    title("{\gamma} * R_{sim} vs Y for p = " + p_val + ", " + "[" + join(string(C_s(i, :)), ",") + "]")
+    legend('Modelled Y', 'Measured Y', 'Predicted Y')
 end
 end
 
